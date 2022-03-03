@@ -2,13 +2,16 @@ package com.example.vuebackboard.service;
 
 import com.example.vuebackboard.entity.BoardEntity;
 import com.example.vuebackboard.entity.BoardRepository;
+import com.example.vuebackboard.model.Header;
+import com.example.vuebackboard.model.Pagination;
 import com.example.vuebackboard.web.dto.BoardDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -17,9 +20,10 @@ public class BoardService {
 
     private final BoardRepository boardRepository;
 
-    public List<BoardDto> getBoardList() {
+    public
+    Header<List<BoardDto>> getBoardList(Pageable pageable) {
         ArrayList<BoardDto> dtos = new ArrayList<>();
-        List<BoardEntity> boardEntities = boardRepository.findAll();
+        Page<BoardEntity> boardEntities = boardRepository.findAllByOrderByIdxDesc(pageable);
         boardEntities.forEach(entity -> {
             dtos.add(BoardDto.builder()
                     .idx(entity.getIdx())
@@ -29,8 +33,15 @@ public class BoardService {
                     .createdAt(entity.getCreatedAt())
                     .build());
         });
-        Collections.reverse(dtos);  //역순 정렬
-        return dtos;
+
+        Pagination pagination = new Pagination(
+                (int) boardEntities.getTotalElements()
+                , pageable.getPageNumber() + 1
+                , pageable.getPageSize()
+                , 10
+        );
+
+        return Header.OK(dtos, pagination);
     }
 
     public BoardDto getBoard(Long id) {
@@ -51,10 +62,13 @@ public class BoardService {
                 .contents(boardDto.getContents())
                 .title(boardDto.getTitle())
                 .build();
+
+        System.out.println("저장" + boardDto.toString());
         return boardRepository.save(board);
     }
 
     public BoardEntity update(BoardDto boardDto){
+        System.out.println("수정" + boardDto.toString());
         BoardEntity board = boardRepository.findById(1L).orElseThrow(() -> new RuntimeException("게시글을 찾을 수 없습니다."));
         board.setTitle(boardDto.getTitle());
         board.setContents(boardDto.getContents());
